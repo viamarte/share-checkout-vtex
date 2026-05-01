@@ -1,0 +1,9 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "magick": true,
+    "zopflipng": true,
+    "npx @biomejs/biome": true,
+    "sips": true,
+    "npx biome": true
+  }
+}
