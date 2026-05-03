@@ -7,7 +7,7 @@ Extensão de navegador para capturar o `orderFormId` em páginas de checkout VTE
 Esta extensão faz uma única tarefa:
 
 - Detecta quando a aba atual está em uma URL que contém `/checkout`
-- Tenta ler `window.vtexjs.checkout.orderFormId` no contexto real da página
+- Quando o usuário abre o popup, lê `window.vtexjs.checkout.orderFormId` apenas na aba ativa
 - Abre um popup no ícone da extensão com o `orderFormId`, o host atual e a prévia do link
 - Copia um link no formato `https://host/checkout?orderFormId=...` preservando hash e outros query params
 - Permite incluir opcionalmente `utm_source=share-checkout`
@@ -46,30 +46,17 @@ O link final reaproveita o checkout aberto na aba atual, preserva hash e query p
 
 ## Como funciona
 
-### 1. Content script
-
-O arquivo `src/content/scripts.js` roda em todas as páginas e injeta um page bridge. Ele não renderiza UI visível. A responsabilidade dele é manter o estado da aba pronto para o popup.
-
-### 2. Page bridge
-
-O arquivo `public/content/pageBridge.js` roda no contexto da página para conseguir acessar `window.vtexjs.checkout.orderFormId`. Isso é necessário porque content scripts em Chrome e Firefox não enxergam de forma confiável os objetos JavaScript criados pelo site.
-
-O bridge publica snapshots sempre que:
-
-- A página carrega
-- O histórico muda com `pushState` ou `replaceState`
-- Acontece `popstate`, `hashchange` ou `pageshow`
-- O popup pede uma nova coleta
-
-### 3. Popup
+### 1. Popup
 
 O popup fica em `src/popup/` e é aberto ao clicar no ícone da extensão. Ele:
 
 - Consulta a aba ativa
-- Pede o estado mais recente ao content script
+- Injeta a leitura do checkout apenas na aba ativa atual
 - Mostra o `orderFormId` detectado
 - Deixa o usuário copiar o ID ou o link completo
 - Mostra uma mensagem de indisponibilidade quando o checkout VTEX não foi detectado
+
+No Chromium, a coleta sob demanda usa `activeTab` com `chrome.scripting`. No Firefox, a leitura usa `activeTab` com `tabs.executeScript`.
 
 ### 4. Regras de geração do link
 
@@ -87,10 +74,9 @@ O link copiado sempre usa:
 
 ### Permissões usadas
 
-- A permissão `tabs` é necessária para o popup consultar a aba ativa e falar com o content script
 - A permissão `clipboardWrite` é necessária para copiar o link e o `orderFormId`
-- O registro `content_scripts` em `<all_urls>` é necessário porque lojas VTEX compatíveis podem estar em domínios variados e a extensão precisa detectar `/checkout` em qualquer host
-- O `web_accessible_resources` para `content/pageBridge.js` é necessário para carregar o bridge no contexto da página
+- A permissão `activeTab` limita a leitura da aba atual ao momento em que o usuário abre a extensão
+- No Chromium, a permissão `scripting` é necessária junto com `activeTab` para injetar a leitura sob demanda em Manifest V3
 
 ### Premissas VTEX
 
@@ -106,12 +92,8 @@ images/
 └── popup_demo_2.jpg
 
 public/
-└── content/
-    └── pageBridge.js
 
 src/
-├── content/
-│   └── scripts.js
 ├── images/
 │   └── icon.png
 ├── popup/
@@ -173,7 +155,9 @@ npm run preview
 
 ## Compatibilidade
 
-A base continua única para Chromium, Chrome, Edge e Firefox. As diferenças por navegador ficam concentradas no manifesto e no acesso às APIs de extensão a partir do popup.
+A base continua única para Chromium, Chrome, Edge e Firefox. As diferenças por navegador ficam concentradas no manifesto e no acesso às APIs de injeção sob demanda a partir do popup.
+
+No Chrome e outros navegadores Chromium, isso significa `activeTab` mais `scripting` por causa do Manifest V3. No Firefox, `activeTab` é suficiente para a injeção programática usada hoje.
 
 ## Limitações conhecidas
 
