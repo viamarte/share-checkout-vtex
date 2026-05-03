@@ -34,35 +34,25 @@
     "default_title": "Share Checkout Link",
     "default_popup": "popup/index.html"
   },
-  "permissions": [
-    "tabs",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{4bf0261b-48cb-4973-8864-9783f709a38c}",
+      "data_collection_permissions": {
+        "required": [
+          "browsingActivity",
+          "websiteContent"
+        ]
+      }
+    }
+  },
+  "chromium:permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "scripting"
+  ],
+  "firefox:permissions": [
+    "activeTab",
     "clipboardWrite"
-  ],
-  "chromium:web_accessible_resources": [
-    {
-      "resources": [
-        "content/pageBridge.js",
-        "content_scripts/*.css"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
-  "firefox:web_accessible_resources": [
-    "content/pageBridge.js",
-    "content_scripts/*.css"
-  ],
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content/scripts.js"
-      ],
-      "run_at": "document_start"
-    }
   ],
   "author": "CALCADOS MARTE LTDA"
 }

@@ -6,6 +6,23 @@ import {
   EXTENSION_UTM_SOURCE,
 } from '../shared/checkout.js';
 
+const FIREFOX_STATE_PROBE = `(() => {
+  try {
+    const pageWindow = window.wrappedJSObject || window;
+    const value = pageWindow?.vtexjs?.checkout?.orderFormId;
+
+    return {
+      href: window.location.href,
+      orderFormId: typeof value === 'string' ? value.trim() : '',
+    };
+  } catch (_error) {
+    return {
+      href: window.location.href,
+      orderFormId: '',
+    };
+  }
+})()`;
+
 const RETRY_REFRESH_DELAY_MS = 1400;
 const UTM_SOURCE_PREFERENCE_STORAGE_KEY = 'shareCheckout.includeUtmSource';
 
@@ -86,82 +103,139 @@ if (root) {
   refreshState({ forceLoading: true });
 }
 
+function createElement(tagName, className, textContent) {
+  const element = document.createElement(tagName);
+
+  if (className) {
+    element.className = className;
+  }
+
+  if (textContent !== undefined) {
+    element.textContent = textContent;
+  }
+
+  return element;
+}
+
+function setDataAttribute(element, name) {
+  element.setAttribute(`data-${name}`, '');
+  return element;
+}
+
 function renderShell(container) {
-  container.innerHTML = `
-    <div class="popup_shell">
-      <div class="popup_card">
-        <header class="popup_header">
-          <div class="popup_brand">
-            <img class="popup_logo" src="${iconUrl}" alt="" aria-hidden="true" />
-            <div>
-              <p class="popup_eyebrow">${text.eyebrow}</p>
-              <h1 class="popup_title">${text.title}</h1>
-            </div>
-          </div>
-          <span class="popup_status" data-status>${text.statusLoading}</span>
-        </header>
+  const shell = createElement('div', 'popup_shell');
+  const card = createElement('div', 'popup_card');
+  const header = createElement('header', 'popup_header');
+  const brand = createElement('div', 'popup_brand');
+  const logo = createElement('img', 'popup_logo');
+  const brandText = createElement('div');
+  const eyebrow = createElement('p', 'popup_eyebrow', text.eyebrow);
+  const title = createElement('h1', 'popup_title', text.title);
+  const status = setDataAttribute(
+    createElement('span', 'popup_status', text.statusLoading),
+    'status',
+  );
+  const subtitle = createElement('p', 'popup_subtitle', text.subtitle);
+  const success = setDataAttribute(
+    createElement('section', 'popup_success'),
+    'copy-success',
+  );
+  const footer = createElement('div', 'popup_footer');
+  const message = setDataAttribute(
+    createElement('p', 'popup_message', text.loadingMessage),
+    'message',
+  );
+  const copyLinkButton = setDataAttribute(
+    createElement('button', 'popup_primary_button', text.primaryAction),
+    'copy-link',
+  );
+  const grid = createElement('section', 'popup_grid');
+  const hostPanel = createElement('article', 'popup_panel');
+  const hostLabel = createElement('p', 'popup_label', text.hostLabel);
+  const hostValue = setDataAttribute(
+    createElement('p', 'popup_value', text.emptyHost),
+    'host',
+  );
+  const orderFormPanel = createElement('article', 'popup_panel');
+  const orderFormHeader = createElement('div', 'popup_panel_header');
+  const orderFormLabel = createElement('p', 'popup_label', text.orderFormLabel);
+  const copyIdButton = setDataAttribute(
+    createElement('button', 'popup_inline_button', text.secondaryAction),
+    'copy-id',
+  );
+  const orderFormValue = setDataAttribute(
+    createElement('p', 'popup_value popup_value_code', text.emptyOrderForm),
+    'order-form',
+  );
+  const previewPanel = createElement(
+    'section',
+    'popup_panel popup_panel_preview',
+  );
+  const previewHeader = createElement('div', 'popup_panel_header');
+  const previewLabel = createElement('p', 'popup_label', text.previewLabel);
+  const refreshButton = setDataAttribute(
+    createElement('button', 'popup_inline_button', text.refreshAction),
+    'refresh',
+  );
+  const previewValue = setDataAttribute(
+    createElement('p', 'popup_value popup_value_preview', text.emptyPreview),
+    'link-preview',
+  );
+  const checkboxLabel = createElement('label', 'popup_checkbox');
+  const utmCheckbox = setDataAttribute(createElement('input'), 'utm-checkbox');
+  const utmText = createElement('span', '', text.includeUtmLabel);
+  const credit = createElement('p', 'popup_credit');
+  const creditPrefix = createElement('span', '', text.creditPrefix);
+  const creditLink = createElement(
+    'a',
+    'popup_credit_link',
+    text.creditLinkLabel,
+  );
 
-        <p class="popup_subtitle">${text.subtitle}</p>
+  logo.src = iconUrl;
+  logo.alt = '';
+  logo.setAttribute('aria-hidden', 'true');
 
-        <section class="popup_success" data-copy-success hidden aria-live="polite"></section>
+  success.hidden = true;
+  success.setAttribute('aria-live', 'polite');
 
-        <div class="popup_footer">
-          <p class="popup_message" data-message>${text.loadingMessage}</p>
-          <button type="button" class="popup_primary_button" data-copy-link>
-            ${text.primaryAction}
-          </button>
-        </div>
+  copyLinkButton.type = 'button';
+  copyIdButton.type = 'button';
+  refreshButton.type = 'button';
 
-        <section class="popup_grid" aria-label="Checkout details">
-          <article class="popup_panel">
-            <p class="popup_label">${text.hostLabel}</p>
-            <p class="popup_value" data-host>${text.emptyHost}</p>
-          </article>
+  grid.setAttribute('aria-label', 'Checkout details');
 
-          <article class="popup_panel">
-            <div class="popup_panel_header">
-              <p class="popup_label">${text.orderFormLabel}</p>
-              <button type="button" class="popup_inline_button" data-copy-id>
-                ${text.secondaryAction}
-              </button>
-            </div>
-            <p class="popup_value popup_value_code" data-order-form>
-              ${text.emptyOrderForm}
-            </p>
-          </article>
-        </section>
+  utmCheckbox.type = 'checkbox';
+  utmCheckbox.checked = includeUtmSource;
 
-        <section class="popup_panel popup_panel_preview">
-          <div class="popup_panel_header">
-            <p class="popup_label">${text.previewLabel}</p>
-            <button type="button" class="popup_inline_button" data-refresh>
-              ${text.refreshAction}
-            </button>
-          </div>
-          <p class="popup_value popup_value_preview" data-link-preview>
-            ${text.emptyPreview}
-          </p>
-        </section>
+  creditLink.href = 'https://github.com/viamarte/share-checkout-vtex';
+  creditLink.target = '_blank';
+  creditLink.rel = 'noreferrer';
 
-        <label class="popup_checkbox">
-          <input type="checkbox" data-utm-checkbox ${includeUtmSource ? 'checked' : ''} />
-          <span>${text.includeUtmLabel}</span>
-        </label>
-
-        <p class="popup_credit">
-          <span>${text.creditPrefix}</span>
-          <a
-            class="popup_credit_link"
-            href="https://github.com/viamarte/share-checkout-vtex"
-            target="_blank"
-            rel="noreferrer"
-          >
-            ${text.creditLinkLabel}
-          </a>
-        </p>
-      </div>
-    </div>
-  `;
+  brandText.append(eyebrow, title);
+  brand.append(logo, brandText);
+  header.append(brand, status);
+  footer.append(message, copyLinkButton);
+  hostPanel.append(hostLabel, hostValue);
+  orderFormHeader.append(orderFormLabel, copyIdButton);
+  orderFormPanel.append(orderFormHeader, orderFormValue);
+  grid.append(hostPanel, orderFormPanel);
+  previewHeader.append(previewLabel, refreshButton);
+  previewPanel.append(previewHeader, previewValue);
+  checkboxLabel.append(utmCheckbox, utmText);
+  credit.append(creditPrefix, document.createTextNode(' '), creditLink);
+  card.append(
+    header,
+    subtitle,
+    success,
+    footer,
+    grid,
+    previewPanel,
+    checkboxLabel,
+    credit,
+  );
+  shell.append(card);
+  container.replaceChildren(shell);
 }
 
 function wireEvents(container) {
@@ -292,19 +366,10 @@ async function getActiveTabState() {
   }
 
   try {
-    const response = await sendTabMessage(activeTab.id, {
-      type: 'getOrderFormState',
-      reason: 'popup-open',
-    });
-
-    if (response?.state) {
-      return response.state;
-    }
+    return await collectTabState(activeTab);
   } catch (_error) {
     return buildCheckoutState(activeTab.url || '', '');
   }
-
-  return buildCheckoutState(activeTab.url || '', '');
 }
 
 async function queryActiveTab() {
@@ -323,21 +388,52 @@ async function queryActiveTab() {
   });
 }
 
-async function sendTabMessage(tabId, message) {
-  if (typeof browser !== 'undefined' && browser.tabs?.sendMessage) {
-    return browser.tabs.sendMessage(tabId, message);
+async function collectTabState(activeTab) {
+  const fallbackHref = activeTab.url || '';
+  const snapshot = await executeStateProbe(activeTab.id);
+
+  return buildCheckoutState(
+    snapshot?.href || fallbackHref,
+    snapshot?.orderFormId || '',
+  );
+}
+
+async function executeStateProbe(tabId) {
+  if (typeof browser !== 'undefined' && browser.tabs?.executeScript) {
+    const results = await browser.tabs.executeScript(tabId, {
+      code: FIREFOX_STATE_PROBE,
+    });
+
+    return results?.[0] || null;
   }
 
-  return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-
-      resolve(response);
+  if (chrome.scripting?.executeScript) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: readChromeTabState,
     });
-  });
+
+    return results?.[0]?.result || null;
+  }
+
+  return null;
+}
+
+function readChromeTabState() {
+  try {
+    const value = window.vtexjs?.checkout?.orderFormId;
+
+    return {
+      href: window.location.href,
+      orderFormId: typeof value === 'string' ? value.trim() : '',
+    };
+  } catch (_error) {
+    return {
+      href: window.location.href,
+      orderFormId: '',
+    };
+  }
 }
 
 async function copyText(textToCopy) {
