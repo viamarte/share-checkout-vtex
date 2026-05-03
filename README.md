@@ -2,6 +2,10 @@
 
 Extensão de navegador para capturar o `orderFormId` em páginas de checkout VTEX e copiar um link de checkout pronto para compartilhar com clientes.
 
+[![Baixar para Chrome e navegadores Chromium](https://img.shields.io/badge/Baixar%20para%20Chrome%20e%20Chromium-Chrome%20Web%20Store-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/share-checkout/hebhfmfndgdkopnndefocodlialmgkch)
+
+Instalação pela Chrome Web Store: https://chromewebstore.google.com/detail/share-checkout/hebhfmfndgdkopnndefocodlialmgkch
+
 ## Escopo da extensão
 
 Esta extensão faz uma única tarefa:
